@@ -1,53 +1,67 @@
-name: Sync luci-app-v2ray-server to root
+name: Sync luci-app-v2ray-server from kiddin9
 
 on:
-  schedule:
-    - cron: '30 4 * * *'   # daily ~4:30 UTC / ~12:30 北京时间
+  # 手动触发
   workflow_dispatch:
+  # 每天 UTC 时间 2:00 自动运行
+  schedule:
+    - cron: '0 2 * * *'  # UTC 2:00 = 北京时间 10:00
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout your repo
+      - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # keep nice linear history
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout upstream shallow
-        uses: actions/checkout@v4
-        with:
-          repository: kiddin9/kwrt-packages
-          ref: main
-          path: upstream
-          fetch-depth: 1
-
-      - name: Replace root with upstream subdirectory contents
+      - name: Set up Git user
         run: |
-          # Backup .git (just in case)
-          mv .git ../git-backup
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Nuke everything else in root
-          rm -rf ./*
+      - name: Clone and extract luci-app-v2ray-server from kiddin9/kwrt-packages
+        run: |
+          # 创建临时目录
+          mkdir -p tmp-src
+          
+          # 使用 sparse-checkout 只拉取目标插件（高效！）
+          git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git tmp-src/repo
+          cd tmp-src/repo
+          git sparse-checkout init --cone
+          git sparse-checkout set luci-app-v2ray-server
+          cd ../..
+          
+          # 清理当前目录（保留 .git 和 .github）
+          find . -maxdepth 1 ! -name '.git' ! -name '.github' ! -name '.' -exec rm -rf {} + 2>/dev/null || true
+          
+          # 复制插件内容到根目录
+          cp -r tmp-src/repo/luci-app-v2ray-server/* .
+          
+          # 获取上游 commit 信息用于提交日志
+          UPSTREAM_COMMIT=$(cd tmp-src/repo && git log -1 --format="%H" luci-app-v2ray-server)
+          UPSTREAM_DATE=$(cd tmp-src/repo && git log -1 --format="%ad" --date=iso-strict luci-app-v2ray-server)
+          
+          echo "UPSTREAM_COMMIT=$UPSTREAM_COMMIT" >> $GITHUB_ENV
+          echo "UPSTREAM_DATE=$UPSTREAM_DATE" >> $GITHUB_ENV
+          
+          # 清理临时文件
+          rm -rf tmp-src
 
-          # Copy only the subdir to root
-          cp -r upstream/luci-app-v2ray-server/* .
-          cp -r upstream/luci-app-v2ray-server/.[!.]* . 2>/dev/null || true  # hidden files if any
+      - name: Commit and push if changes exist
+        run: |
+          git add .
+          # 检查是否有变更
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync luci-app-v2ray-server from kiddin9/kwrt-packages@$UPSTREAM_COMMIT
 
-          # Restore .git
-          mv ../git-backup .git
-
-          # Clean temp upstream
-          rm -rf upstream
-
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-
-          # Commit only if anything changed
-          git add -A
-          git diff --cached --quiet || git commit -m "chore(sync): update luci-app-v2ray-server from upstream $(date '+%Y-%m-%d %H:%M UTC') [skip ci]"
-
-      - name: Force push (safe with lease)
-        run: git push origin HEAD:main --force-with-lease
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            Upstream commit: $UPSTREAM_COMMIT
+            Date: $UPSTREAM_DATE
+            
+            Auto-synced by GitHub Actions."
+            git push origin main
+            echo "✅ Changes pushed."
+          else
+            echo "ℹ️ No changes detected. Nothing to push."
+          fi
