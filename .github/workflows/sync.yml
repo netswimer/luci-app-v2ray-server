@@ -1,34 +1,54 @@
-name: Sync luci-app-v2ray-server from kiddin9/kwrt-packages
+name: Sync luci-app-v2ray-server subdirectory
 
 on:
   schedule:
-    - cron: '0 3 * * *'          # 每天 UTC 3:00 ≈ 北京时间 11:00
-  workflow_dispatch:             # 支持手动触发
+    - cron: '15 4 * * *'          # 每天 UTC 4:15 ≈ 北京时间中午左右
+  workflow_dispatch:              # 手动触发按钮
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout target repo
+      - name: Checkout this repo (target)
         uses: actions/checkout@v4
         with:
-          path: target
+          sparse-checkout: .       # 先 checkout 空（后面再指定路径）
 
-      - name: Sync subdirectory from source
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
-        with:
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-          upstream_sync_branch: main
-          upstream_sync_repo: kiddin9/kwrt-packages
-          upstream_sync_files: |
-            luci-app-v2ray-server
-          git_config_user: GitHub Action
-          git_config_email: action@github.com
-          commit_message: |
-            chore: sync luci-app-v2ray-server from upstream
-            Skip-ci: true
-
-      - name: Push changes
-        working-directory: target
+      - name: Set sparse-checkout to the subdir
         run: |
-          git push origin HEAD:main || echo "No changes to push"
+          git sparse-checkout init --cone
+          git sparse-checkout set luci-app-v2ray-server
+          git sparse-checkout reapply
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/kiddin9/kwrt-packages.git || true
+
+      - name: Fetch upstream
+        run: git fetch upstream main --depth=1
+
+      - name: Hard reset to upstream + move subdir to root
+        run: |
+          # 先 reset 到上游状态（但因为 sparse，只会影响已 track 的文件）
+          git reset --hard upstream/main
+
+          # 如果上游有其他文件/目录，先清空根目录下非目标的内容（小心使用！）
+          # 只保留 luci-app-v2ray-server/ 和 .git
+          find . -mindepth 1 -maxdepth 1 -not -name 'luci-app-v2ray-server' -not -name '.git' -exec rm -rf {} +
+
+          # 把子目录内容移到根目录
+          mv luci-app-v2ray-server/* ./
+          mv luci-app-v2ray-server/.* ./ 2>/dev/null || true
+          rmdir luci-app-v2ray-server || true
+
+          # 配置 git user（必须）
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+          # 提交（如果有变化）
+          git add -A
+          git commit -m "chore: sync luci-app-v2ray-server from upstream $(date +'%Y-%m-%d')" || echo "No changes"
+
+      - name: Push to origin
+        run: git push origin HEAD:main --force-with-lease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
