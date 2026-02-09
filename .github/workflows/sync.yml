@@ -29,7 +29,7 @@ jobs:
           
           # 使用 sparse-checkout 只拉取目标插件（高效！）
           git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git repo
-          cd tmp-src/repo
+          cd repo
           git sparse-checkout init --cone
           git sparse-checkout set luci-app-v2ray-server
           cd ../..
