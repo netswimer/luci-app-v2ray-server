@@ -25,9 +25,10 @@ jobs:
         run: |
           # 创建临时目录
           mkdir -p tmp-src
+          cd tmp-src
           
           # 使用 sparse-checkout 只拉取目标插件（高效！）
-          git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git tmp-src/repo
+          git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git repo
           cd tmp-src/repo
           git sparse-checkout init --cone
           git sparse-checkout set luci-app-v2ray-server
