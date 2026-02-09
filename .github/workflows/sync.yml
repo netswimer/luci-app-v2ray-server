@@ -30,11 +30,13 @@ jobs:
           # 使用 sparse-checkout 只拉取目标插件（高效！）
           git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git repo
           cd repo
+          echo "当前目录："
           ls
           git sparse-checkout init --cone
           git sparse-checkout set luci-app-v2ray-server
+          echo "当前目录："
           ls
-          cd ..
+          echo "当前目录："
           cd ..
           ls
           # 清理当前目录（保留 .git 和 .github）
