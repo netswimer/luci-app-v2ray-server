@@ -31,14 +31,15 @@ jobs:
           git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git repo
           cd repo
           echo "当前目录："
-          ls
+          pwd
           git sparse-checkout init --cone
           git sparse-checkout set luci-app-v2ray-server
           echo "当前目录："
-          ls
-          echo "当前目录："
+          pwd
+          
           cd ..
-          ls
+          echo "当前目录："
+          
           # 清理当前目录（保留 .git 和 .github）
           find . -maxdepth 1 ! -name '.git' ! -name '.github' ! -name '.' -exec rm -rf {} + 2>/dev/null || true
           
