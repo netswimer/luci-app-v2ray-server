@@ -33,6 +33,7 @@ jobs:
           ls
           git sparse-checkout init --cone
           git sparse-checkout set luci-app-v2ray-server
+          ls
           cd ..
           cd ..
           
