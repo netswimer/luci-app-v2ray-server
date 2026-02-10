@@ -2,8 +2,8 @@ name: Sync luci-app-v2ray-server from kiddin9
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 每天 UTC 0:00 运行一次（北京时间 8:00）。可改成 '0 */6 * * *' 每6小时一次。
-  workflow_dispatch:  # 支持手动触发
+    - cron: '0 0 * * *'  # 每天 UTC 0:00
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -13,28 +13,37 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.REPO_TOKEN }}  # 用 PAT 避免权限问题
-          fetch-depth: 0  # 获取完整历史
+          token: ${{ secrets.REPO_TOKEN }}
+          fetch-depth: 0
 
       - name: Clone upstream repo
         run: |
-          git clone https://github.com/kiddin9/kwrt-packages.git upstream-kwrt
+          git clone https://github.com/kiddin9/kwrt-packages.git upstream-kwrt-temp  # 改个临时名字，避免冲突
 
       - name: Sync luci-app-v2ray-server directory
         run: |
-          if [ -d "upstream-kwrt/luci-app-v2ray-server" ]; then
-            rm -rf luci-app-v2ray-server  # 先清空旧内容（如果存在）
-            cp -r upstream-kwrt/luci-app-v2ray-server ./
+          if [ -d "upstream-kwrt-temp/luci-app-v2ray-server" ]; then
+            rm -rf luci-app-v2ray-server upstream-kwrt  # 先彻底删掉旧的（包括可能的 upstream-kwrt）
+            cp -r upstream-kwrt-temp/luci-app-v2ray-server ./
+            rm -rf upstream-kwrt-temp  # 立即删除临时克隆
             echo "Synced successfully."
           else
-            echo "Upstream directory not found. Exiting."
+            echo "Upstream directory not found."
             exit 1
           fi
 
-      - name: Commit and push changes
+      - name: Clean any submodule junk and git traces
+        run: |
+          rm -rf upstream-kwrt .gitmodules upstream-kwrt-temp || true
+          git rm --cached upstream-kwrt || true 2>/dev/null
+          git rm --cached .gitmodules || true 2>/dev/null
+          git config --unset submodule.upstream-kwrt.url || true 2>/dev/null
+          git config --unset submodule.upstream-kwrt.active || true 2>/dev/null
+
+      - name: Commit and push changes if any
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
           git commit -m "Auto-sync luci-app-v2ray-server from kiddin9/kwrt-packages $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-          git push origin main  # 假设主分支是 main，可改成 master 如果是旧分支
+          git push origin main
