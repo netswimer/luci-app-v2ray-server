@@ -30,20 +30,23 @@ jobs:
           # 使用 sparse-checkout 只拉取目标插件（高效！）
           git clone --filter=blob:none --sparse https://github.com/kiddin9/kwrt-packages.git repo
           cd repo
-          echo "当前目录和文件1："
+          echo "开始--------当前目录和文件1："
           pwd && ls
+          echo "结束--------当前目录和文件1："
           git sparse-checkout init --cone
           git sparse-checkout set luci-app-v2ray-server
-          echo "当前目录和文件2："
-          pwd && ls         
+          echo "开始--------当前目录和文件2："
+          pwd && ls   
+          echo "结束--------当前目录和文件2："
           cd ..
-          echo "当前目录和文件3："
+          echo "开始--------当前目录和文件3："
           pwd && ls
+          echo "结束--------当前目录和文件3："
           # 清理当前目录（保留 .git 和 .github）
           find . -maxdepth 1 ! -name '.git' ! -name '.github' ! -name '.' -exec rm -rf {} + 2>/dev/null || true
           echo "cp 阶段"
           # 复制插件内容到根目录
-          cp -r tmp-src/repo/luci-app-v2ray-server/luci-app-v2ray-server/* .
+          cp -r tmp-src/repo/luci-app-v2ray-server/* .
           
           # 获取上游 commit 信息用于提交日志
           UPSTREAM_COMMIT=$(cd tmp-src/repo && git log -1 --format="%H" luci-app-v2ray-server)
