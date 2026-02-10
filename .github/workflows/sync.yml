@@ -55,7 +55,7 @@ jobs:
           find . -maxdepth 1 ! -name '.git' ! -name '.github' ! -name '.' -exec rm -rf {} + 2>/dev/null || true
           echo "开始-------CP阶段:"
           # 复制插件内容到根目录
-          cp -r tmp-src/repo/luci-app-v2ray-server/* .
+          cp -r ./repo/luci-app-v2ray-server/* .
           echo "结束-------CP阶段:"
           
           # 获取上游 commit 信息用于提交日志
